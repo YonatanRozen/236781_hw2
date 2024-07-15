@@ -11,26 +11,43 @@ math (delimited with $$).
 part1_q1 = r"""
 **Your answer:**
 
+1. 
+    a. The shape of the tensor is (64 , 512, 64, 1024). The jacobian of Y w.r.t X contains the derivatives of each 
+    entry of Y w.r.t to each entry of X. This means that each entry of Y gives us a matrix of partial derivatives 
+    which is the same shape as X. This is similar to when we calculated the derivative of cross entropy loss according 
+    to X and the result was of the same shape as X. Since Y is a matrix of shape 64x512, and each entry is 
+    translated to a matrix of shape 64x1024 (same size as X), we get a matrix of shape (64, 512, 64, 1024) which is a
+    matrix of matrices. 
+    
+    b. The Jacobian is sparse. As we explained earlier, we differentiate each entry of y according to each entry in
+        X. But each entry in Y is related to a specific sample (in fact, the entire row of that entry), so
+         differentiating it according to any of the other 63 samples will produce 0. Thus, we have 63*1024 entries
+        which are equal to 0, in every calculation in a specific cell in y, so we have 64*512*63*1024 0 entries in 
+        the Jacobian which makes it sparse. 
+        
+    c. As written earlier in the notebook, we can calculate a specific entry in the gradient, 
+    like \frac{\partial L}{\partial x_{1,1}} and than extrapolate from there how to obtain the VJP. 
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+2. 
+    a. Similarly to what we explained in 1.a each entry in Y is differentiated w.r.t to each entry in W, 
+       so the Jacobian dimensions will be (64, 512, 512, 1024).
+       
+    b. 
+
+    c. As written earlier in the notebook, we can calculate a specific entry in the gradient, 
+    like \frac{\partial L}{\partial w_{1,1}} and than extrapolate from there how to obtain the VJP.
+        
 
 """
 
 part1_q2 = r"""
+
 **Your answer:**
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+    backpropagation is indeed required for descent optimization. Neural networks typically include multiple 
+    layers, so computing gradients of a layer according to inputs of previous layers directly might be 
+    computationally expensive. Using backpropagation allows propagation
+    of gradients using partial calculations from higher layers, which turns this process to more efficient.
 
 """
 

@@ -82,7 +82,7 @@ class LeakyReLU(Layer):
 
         # TODO: Implement the LeakyReLU operation.
         # ====== YOUR CODE: ======
-        out = torch.maximum(self.alpha*x, x)
+        out = torch.maximum(self.alpha * x, x)
         # ========================
 
         self.grad_cache["x"] = x
@@ -98,8 +98,8 @@ class LeakyReLU(Layer):
         # TODO: Implement gradient w.r.t. the input x
         # ====== YOUR CODE: ======
         y = torch.ones_like(x)
-        y[x<=0]= self.alpha
-        dx = y*dout
+        y[x <= 0] = self.alpha
+        dx = y * dout
         # ========================
 
         return dx
@@ -145,7 +145,7 @@ class Sigmoid(Layer):
         # TODO: Implement the Sigmoid function.
         #  Save whatever you need into grad_cache.
         # ====== YOUR CODE: ======
-        out = 1/(1+torch.exp(-x))
+        out = 1 / (1 + torch.exp(-x))
         # ========================
         self.grad_cache["x"] = x
         return out
@@ -160,7 +160,7 @@ class Sigmoid(Layer):
         # ====== YOUR CODE: ======
         x = self.grad_cache["x"]
         y = torch.ones_like(x)
-        y = torch.exp(-x)/((1+torch.exp(-x))**2)
+        y = torch.exp(-x) / ((1 + torch.exp(-x)) ** 2)
         dx = y * dout
         # ========================
 
@@ -189,7 +189,7 @@ class TanH(Layer):
         # TODO: Implement the tanh function.
         #  Save whatever you need into grad_cache.
         # ====== YOUR CODE: ======
-        out = (torch.exp(x)-torch.exp(-x))/(torch.exp(x)+torch.exp(-x))
+        out = (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
         self.grad_cache["x"] = x
         # ========================
 
@@ -205,7 +205,7 @@ class TanH(Layer):
         # ====== YOUR CODE: ======
         x = self.grad_cache["x"]
         y = torch.ones_like(x)
-        y = 1-((torch.exp(x)-torch.exp(-x))/(torch.exp(x)+torch.exp(-x)))**2
+        y = 1 - ((torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))) ** 2
         dx = y * dout
         # ========================
 
@@ -255,7 +255,7 @@ class Linear(Layer):
 
         # TODO: Compute the affine transform
         # ====== YOUR CODE: ======
-        out = x@(self.w.T)+self.b
+        out = x @ (self.w.T) + self.b
         # ========================
 
         self.grad_cache["x"] = x
@@ -274,10 +274,9 @@ class Linear(Layer):
         #   - db, the gradient of the loss with respect to b
         #  Note: You should ACCUMULATE gradients in dw and db.
         # ====== YOUR CODE: ======
-        y = self.w
-        dx = dout@y
-        self.db = 0
-        self.dw = dout.T @ x
+        dx = dout @ self.w
+        self.db += dout.sum(dim=0)
+        self.dw += dout.T @ x
 
         # ========================
 
@@ -319,7 +318,11 @@ class CrossEntropyLoss(Layer):
         # TODO: Compute the cross entropy loss using the last formula from the
         #  notebook (i.e. directly using the class scores).
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        nrows = x.shape[0]
+        true_scores = -x[torch.arange(nrows), y]
+        exp_x = torch.exp(x)
+        log_exp_x = torch.log(torch.sum(exp_x, dim=1))
+        loss = (true_scores + log_exp_x).mean()
         # ========================
 
         self.grad_cache["x"] = x
@@ -338,7 +341,12 @@ class CrossEntropyLoss(Layer):
 
         # TODO: Calculate the gradient w.r.t. the input x.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        C = x.shape[1]
+        res = torch.exp(x)
+        temp = torch.sum(res, dim=1, keepdim=True)
+        res = res / temp
+        res[torch.arange(N), y] -= 1
+        dx = dout * res / N
         # ========================
 
         return dx
@@ -397,7 +405,9 @@ class Sequential(Layer):
         # TODO: Implement the forward pass by passing each layer's output
         #  as the input of the next.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        out = x
+        for layer in self.layers:
+            out = layer.forward(out, )
         # ========================
 
         return out
@@ -409,7 +419,10 @@ class Sequential(Layer):
         #  Each layer's input gradient should be the previous layer's output
         #  gradient. Behold the backpropagation algorithm in action!
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        # do backward pass until the input layer
+        din = dout
+        for layer in reversed(self.layers):
+            din = layer.backward(din)
         # ========================
 
         return din
@@ -419,7 +432,8 @@ class Sequential(Layer):
 
         # TODO: Return the parameter tuples from all layers.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        for layer in self.layers:
+            params += layer.params()
         # ========================
 
         return params
@@ -455,13 +469,13 @@ class MLP(Layer):
     """
 
     def __init__(
-        self,
-        in_features,
-        num_classes,
-        hidden_features=(),
-        activation="relu",
-        dropout=0,
-        **kw,
+            self,
+            in_features,
+            num_classes,
+            hidden_features=(),
+            activation="relu",
+            dropout=0,
+            **kw,
     ):
         super().__init__()
         """
@@ -477,7 +491,21 @@ class MLP(Layer):
 
         # TODO: Build the MLP architecture as described.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        size = len(hidden_features)
+        layers.append(Linear(in_features, hidden_features[0]))
+        for i in range(0, size-1):
+            if activation == 'relu':
+                layers.append(ReLU())
+            else:
+                layers.append(Sigmoid())
+            layers.append(Linear(hidden_features[i], hidden_features[i+1]))
+
+        if activation == 'relu':
+            layers.append(ReLU())
+        else:
+            layers.append(Sigmoid())
+        layers.append(Linear(hidden_features[size-1], num_classes))
+
         # ========================
 
         self.sequence = Sequential(*layers)
