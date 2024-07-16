@@ -19,17 +19,17 @@ class CNN(nn.Module):
     """
 
     def __init__(
-        self,
-        in_size,
-        out_classes: int,
-        channels: Sequence[int],
-        pool_every: int,
-        hidden_dims: Sequence[int],
-        conv_params: dict = {},
-        activation_type: str = "relu",
-        activation_params: dict = {},
-        pooling_type: str = "max",
-        pooling_params: dict = {},
+            self,
+            in_size,
+            out_classes: int,
+            channels: Sequence[int],
+            pool_every: int,
+            hidden_dims: Sequence[int],
+            conv_params: dict = {},
+            activation_type: str = "relu",
+            activation_params: dict = {},
+            pooling_type: str = "max",
+            pooling_params: dict = {},
     ):
         """
         :param in_size: Size of input images, e.g. (C,H,W).
@@ -80,8 +80,56 @@ class CNN(nn.Module):
         #  Note: If N is not divisible by P, then N mod P additional
         #  CONV->ACTs should exist at the end, without a POOL after them.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        P = self.pool_every
+        N = len(self.channels)
+        act = self.activation_type
 
+        in_channels = self.in_size[0]  # 'C' = # in-channels for 1st conv layer
+        for i in range(N // P):
+
+            convs = []
+            for j in range(P):
+                out_channels = self.channels[i+j]
+                conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
+                                       kernel_size=self.conv_params['kernel_size'],
+                                       padding=self.conv_params['padding'], stride=self.conv_params['stride'])
+
+                if act == 'relu':
+                    act_layer = nn.ReLU()
+                else:
+                    act_layer = nn.LeakyReLU(negative_slope=self.activation_params['negative_slope'])
+
+                in_channels = out_channels
+
+                convs.append(conv_layer)
+                convs.append(act_layer)
+
+            if self.pooling_type == 'max':
+                pool = nn.MaxPool2d(kernel_size=self.pooling_params['kernel_size'])
+            else:
+                pool = nn.AvgPool2d(kernel_size=self.pooling_params['kernel_size'])
+            convs.append(pool)
+
+            layers += convs
+
+        convs = []
+        for i in range(N%P):
+            out_channels = self.channels[N//P+i]
+            conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
+                                   kernel_size=self.conv_params['kernel_size'],
+                                   padding=self.conv_params['padding'], stride=self.conv_params['stride'])
+
+            if act == 'relu':
+                act_layer = nn.ReLU()
+            else:
+                act_layer = nn.LeakyReLU(negative_slope=self.activation_params['negative_slope'])
+
+            in_channels = out_channels
+
+            convs.append(conv_layer)
+            convs.append(act_layer)
+
+        layers += convs
         # ========================
         seq = nn.Sequential(*layers)
         return seq
@@ -95,7 +143,9 @@ class CNN(nn.Module):
         rng_state = torch.get_rng_state()
         try:
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            x = torch.rand(self.in_size)
+            res = self.feature_extractor(x)
+            return res.shape[0] * res.shape[1] * res.shape[2]
             # ========================
         finally:
             torch.set_rng_state(rng_state)
@@ -107,9 +157,24 @@ class CNN(nn.Module):
         #  - The first Linear layer should have an input dim of equal to the number of
         #    convolutional features extracted by the convolutional layers.
         #  - The last Linear layer should have an output dim of out_classes.
-        mlp: MLP = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        layers = []
+        in_features = self._n_features()
+        for i in range(len(self.hidden_dims)):
+            lin = nn.Linear(in_features=in_features, out_features=self.hidden_dims[i], bias=True)
+            if self.activation_type == 'relu':
+                act = nn.ReLU()
+            else:
+                act = nn.LeakyReLU(self.activation_params['negative_slope'])
+            layers.append(lin)
+            layers.append(act)
+
+            in_features = self.hidden_dims[i]
+
+        final_lin = nn.Linear(in_features=in_features, out_features=self.out_classes, bias=True)
+        layers.append(final_lin)
+
+        mlp = nn.Sequential(*layers)
         # ========================
         return mlp
 
@@ -119,7 +184,11 @@ class CNN(nn.Module):
         #  return class scores.
         out: Tensor = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        out = torch.zeros((x.shape[0], self.out_classes))
+        for i, sample in enumerate(x):
+            temp = self.feature_extractor(sample)
+            temp = temp.flatten()
+            out[i] = self.mlp(temp)
         # ========================
         return out
 
@@ -130,15 +199,15 @@ class ResidualBlock(nn.Module):
     """
 
     def __init__(
-        self,
-        in_channels: int,
-        channels: Sequence[int],
-        kernel_sizes: Sequence[int],
-        batchnorm: bool = False,
-        dropout: float = 0.0,
-        activation_type: str = "relu",
-        activation_params: dict = {},
-        **kwargs,
+            self,
+            in_channels: int,
+            channels: Sequence[int],
+            kernel_sizes: Sequence[int],
+            batchnorm: bool = False,
+            dropout: float = 0.0,
+            activation_type: str = "relu",
+            activation_params: dict = {},
+            **kwargs,
     ):
         """
         :param in_channels: Number of input channels to the first convolution.
@@ -198,11 +267,11 @@ class ResidualBottleneckBlock(ResidualBlock):
     """
 
     def __init__(
-        self,
-        in_out_channels: int,
-        inner_channels: Sequence[int],
-        inner_kernel_sizes: Sequence[int],
-        **kwargs,
+            self,
+            in_out_channels: int,
+            inner_channels: Sequence[int],
+            inner_kernel_sizes: Sequence[int],
+            **kwargs,
     ):
         """
         :param in_out_channels: Number of input and output channels of the block.
@@ -234,16 +303,16 @@ class ResidualBottleneckBlock(ResidualBlock):
 
 class ResNet(CNN):
     def __init__(
-        self,
-        in_size,
-        out_classes,
-        channels,
-        pool_every,
-        hidden_dims,
-        batchnorm=False,
-        dropout=0.0,
-        bottleneck: bool = False,
-        **kwargs,
+            self,
+            in_size,
+            out_classes,
+            channels,
+            pool_every,
+            hidden_dims,
+            batchnorm=False,
+            dropout=0.0,
+            bottleneck: bool = False,
+            **kwargs,
     ):
         """
         See arguments of CNN & ResidualBlock.
@@ -281,4 +350,3 @@ class ResNet(CNN):
         # ========================
         seq = nn.Sequential(*layers)
         return seq
-

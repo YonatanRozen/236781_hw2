@@ -218,6 +218,7 @@ class Trainer(abc.ABC):
         return EpochResult(losses=losses, accuracy=accuracy)
 
 
+# EVERYTHING I WROTE HERE IS PROBABLY GARBAGE
 class ClassifierTrainer(Trainer):
     """
     Trainer for our Classifier-based models.
@@ -257,7 +258,16 @@ class ClassifierTrainer(Trainer):
         #  - Update parameters
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        scores = self.model(X)
+        loss = self.loss_fn(scores)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        y_pred = self.model.classify(scores)
+        diff = y == y_pred
+        num_correct = torch.count_nonzero(diff).item()
+        batch_loss = loss
         # ========================
 
         return BatchResult(batch_loss, num_correct)
@@ -277,7 +287,11 @@ class ClassifierTrainer(Trainer):
             #  - Forward pass
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            scores = self.model(X)
+            y_pred = self.model.classify(scores)
+            batch_loss = self.loss_fn(y, y_pred)
+            diff = y == y_pred
+            num_correct = torch.count_nonzero(diff).item()
             # ========================
 
         return BatchResult(batch_loss, num_correct)
