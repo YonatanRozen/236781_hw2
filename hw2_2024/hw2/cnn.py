@@ -89,7 +89,7 @@ class CNN(nn.Module):
 
             convs = []
             for j in range(P):
-                out_channels = self.channels[i+j]
+                out_channels = self.channels[i + j]
                 conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
                                        kernel_size=self.conv_params['kernel_size'],
                                        padding=self.conv_params['padding'], stride=self.conv_params['stride'])
@@ -113,8 +113,8 @@ class CNN(nn.Module):
             layers += convs
 
         convs = []
-        for i in range(N%P):
-            out_channels = self.channels[N//P+i]
+        for i in range(N % P):
+            out_channels = self.channels[N // P + i]
             conv_layer = nn.Conv2d(in_channels=in_channels, out_channels=out_channels,
                                    kernel_size=self.conv_params['kernel_size'],
                                    padding=self.conv_params['padding'], stride=self.conv_params['stride'])
@@ -184,11 +184,9 @@ class CNN(nn.Module):
         #  return class scores.
         out: Tensor = None
         # ====== YOUR CODE: ======
-        out = torch.zeros((x.shape[0], self.out_classes))
-        for i, sample in enumerate(x):
-            temp = self.feature_extractor(sample)
-            temp = temp.flatten()
-            out[i] = self.mlp(temp)
+        out = self.feature_extractor(x)
+        out = out.view(x.shape[0], -1)
+        out = self.mlp(out)
         # ========================
         return out
 
@@ -248,14 +246,41 @@ class ResidualBlock(nn.Module):
         #  - Don't create layers which you don't use! This will prevent
         #    correct comparison in the test.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.main_path = []
+        self.shortcut_path = []
+
+        in_ch = in_channels
+        for i in range(len(channels)):
+            self.main_path.append(nn.Conv2d(in_channels=in_ch, out_channels=channels[i], kernel_size=kernel_sizes[i],
+                                            bias=True,
+                                            padding=(kernel_sizes[i] - 1) // 2))  # padding to preserve spatial extent
+
+            if i <= len(channels) - 2:
+                if dropout > 0:
+                    self.main_path.append(nn.Dropout2d(p=dropout))
+
+                if batchnorm:
+                    self.main_path.append(nn.BatchNorm2d(channels[i]))
+
+                if activation_type == 'relu':
+                    self.main_path.append(nn.ReLU())
+                else:
+                    self.main_path.append(nn.LeakyReLU(**activation_params))
+
+            in_ch = channels[i]
+
+        if channels[-1] != in_channels:
+            self.shortcut_path.append(nn.Conv2d(in_channels=in_channels, out_channels=channels[-1], kernel_size=1,
+                                                bias=False))
+        self.main_path = nn.Sequential(*self.main_path)
+        self.shortcut_path = nn.Sequential(*self.shortcut_path)
         # ========================
 
     def forward(self, x: Tensor):
         # TODO: Implement the forward pass. Save the main and residual path to `out`.
         out: Tensor = None
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        out = self.main_path(x) + self.shortcut_path(x)
         # ========================
         out = torch.relu(out)
         return out
@@ -297,7 +322,11 @@ class ResidualBottleneckBlock(ResidualBlock):
         #  Initialize the base class in the right way to produce the bottleneck block
         #  architecture.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        channels = [inner_channels[0]] + list(inner_channels) + [in_out_channels]
+        kernel_sizes = [1] + list(inner_kernel_sizes) + [1]
+
+        super().__init__(in_channels=in_out_channels, channels=channels,
+                         kernel_sizes=kernel_sizes, **kwargs)
         # ========================
 
 

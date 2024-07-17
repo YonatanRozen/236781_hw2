@@ -259,15 +259,15 @@ class ClassifierTrainer(Trainer):
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
         scores = self.model(X)
-        loss = self.loss_fn(scores)
+        loss = self.loss_fn(scores, y)
+
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        y_pred = self.model.classify(scores)
-        diff = y == y_pred
-        num_correct = torch.count_nonzero(diff).item()
-        batch_loss = loss
+        y_pred = self.model.classify_scores(scores)
+        num_correct = (y == y_pred).sum().item()
+        batch_loss = loss.item()
         # ========================
 
         return BatchResult(batch_loss, num_correct)
@@ -288,10 +288,9 @@ class ClassifierTrainer(Trainer):
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
             scores = self.model(X)
-            y_pred = self.model.classify(scores)
-            batch_loss = self.loss_fn(y, y_pred)
-            diff = y == y_pred
-            num_correct = torch.count_nonzero(diff).item()
+            y_pred = self.model.classify_scores(scores)
+            num_correct = (y == y_pred).sum().item()
+            batch_loss = self.loss_fn(scores, y).item()
             # ========================
 
         return BatchResult(batch_loss, num_correct)

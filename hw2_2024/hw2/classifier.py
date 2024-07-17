@@ -34,7 +34,6 @@ class Classifier(nn.Module, ABC):
         # TODO: Implement the forward pass, returning raw scores from the wrapped model.
         # ====== YOUR CODE: ======
         z = self.model(x)
-        z = z.view(x.shape[0], -1)
         # ========================
         assert z.shape[0] == x.shape[0] and z.ndim == 2, "raw scores should be (N, C)"
         return z

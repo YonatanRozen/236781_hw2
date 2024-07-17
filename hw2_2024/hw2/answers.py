@@ -254,8 +254,8 @@ def part4_optim_hp():
     import torch.nn
     import torch.nn.functional
 
-    loss_fn = torch.nn.MSELoss()  # One of the torch.nn losses
-    lr, weight_decay, momentum = 0.01, 0.1, 0.9  # Arguments for SGD optimizer
+    loss_fn = torch.nn.CrossEntropyLoss()  # One of the torch.nn losses
+    lr, weight_decay, momentum = 0.1, 0.001, 0.5  # Arguments for SGD optimizer
     # TODO:
     #  - Tweak the Optimizer hyperparameters.
     #  - Choose the appropriate loss function for your architecture.
