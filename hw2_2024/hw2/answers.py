@@ -255,7 +255,7 @@ def part4_optim_hp():
     import torch.nn.functional
 
     loss_fn = torch.nn.CrossEntropyLoss()  # One of the torch.nn losses
-    lr, weight_decay, momentum = 0.1, 0.001, 0.5  # Arguments for SGD optimizer
+    lr, weight_decay, momentum = 0.09, 0.001, 0.3  # Arguments for SGD optimizer
     # TODO:
     #  - Tweak the Optimizer hyperparameters.
     #  - Choose the appropriate loss function for your architecture.
@@ -267,15 +267,30 @@ def part4_optim_hp():
 
 
 part4_q1 = r"""
-**Your answer:**
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+1. Residual block:
+    For each convolutional layer, there are 256 filters of size 3x3x256 + 1 (+1 because of the bias)
+    => we have total of ((3x3x256+1)x256)x2 = 1,180,160 parameters.
+    
+    Bottleneck residual block: 
+    The 1st layer projects the input to 64 channels using 64 (1x1x256 + 1) filters => 257x64 = 16448 parameters.
+    The 2nd layer has 64 (3x3x64 + 1) filters => (3x3x64 + 1)x64 = 36928 parameters.
+    The 3rd layer expands the input back to 256 channels using 256 (1x1x64 + 1) filters => 256x64 + 256 = 16640 parameters.
+    => in total we have 16448 + 36928 + 16640 = 70016 parameters.
+    
+2. As we see, the number of parameters and the shape of filters is significantly bigger in a regular residual block.
+   The number of floating point operations needed for an output is directly affected by this, so we expect it 
+   to be bigger in a regular residual block than in bottleneck.
+    
+3. (1). The regular residual block has two 3x3 convolution layers, in contrast to the bottleneck block which has 
+   only one 3x3 convolution and two 1x1 convolutions. This gives the regular block more power in combining
+   the input spatially and discover spatial relationships within feature maps. The bottleneck block on the 
+   hand has a lower receptive field.
+   
+   (2). The regular residual block has more power in combining the input across feature maps, since
+    it doesn't reduce the number of channels. It has more filters and so a wider variety of ways combine 
+    the channels. The bottleneck block, on the other hand, reduces the number of channels the input has, 
+    thus loosing some of the cross-channel information which was possible to capture beforehand.   
 
 """
 
