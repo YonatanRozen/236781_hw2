@@ -1,5 +1,6 @@
 import abc
 import torch
+import numpy as np
 
 
 class Layer(abc.ABC):
@@ -370,7 +371,13 @@ class Dropout(Layer):
         #  Notice that contrary to previous layers, this layer behaves
         #  differently a according to the current training_mode (train/test).
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        if self.training_mode:
+            probability = 1 - self.p
+            mask = torch.rand_like(x) < probability
+            out = x * mask
+            self.grad_cache["dropout"] = mask
+        else:
+            out = x * (1 - self.p)
         # ========================
 
         return out
@@ -378,7 +385,10 @@ class Dropout(Layer):
     def backward(self, dout):
         # TODO: Implement the dropout backward pass.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        if self.training_mode:
+            dx = dout * self.grad_cache["dropout"]
+        else:
+            dx = dout * (1 - self.p)
         # ========================
 
         return dx
@@ -498,12 +508,16 @@ class MLP(Layer):
                 layers.append(ReLU())
             else:
                 layers.append(Sigmoid())
+            if dropout>0:
+                layers.append(Dropout(dropout))
             layers.append(Linear(hidden_features[i], hidden_features[i+1]))
 
         if activation == 'relu':
             layers.append(ReLU())
         else:
             layers.append(Sigmoid())
+        if dropout > 0:
+            layers.append(Dropout(dropout))
         layers.append(Linear(hidden_features[size-1], num_classes))
 
         # ========================

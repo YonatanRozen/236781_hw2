@@ -34,7 +34,7 @@ class Trainer(abc.ABC):
         :param model: Instance of the model to train.
         :param device: torch.device to run training on (CPU or GPU).
         """
-        self.model = model
+        self.net = model
         self.device = device
 
         if self.device:
@@ -66,7 +66,7 @@ class Trainer(abc.ABC):
         """
 
         actual_num_epochs = 0
-        epochs_without_improvement = 0
+        same = 0
 
         train_loss, train_acc, test_loss, test_acc = [], [], [], []
         best_acc = None
@@ -83,7 +83,12 @@ class Trainer(abc.ABC):
             #  - Use the train/test_epoch methods.
             #  - Save losses and accuracies in the lists above.
             # ====== YOUR CODE: ======
-            raise NotImplementedError()
+            test = self.test_epoch(dl_test, **kw)
+            train = self.train_epoch(dl_train, **kw)
+            test_loss += [torch.mean(torch.FloatTensor(test.losses)).item()]
+            train_loss += [torch.mean(torch.FloatTensor(train.losses)).item()]
+            test_acc += [test.accuracy]
+            train_acc += [train.accuracy]
             # ========================
 
             # TODO:
@@ -92,13 +97,18 @@ class Trainer(abc.ABC):
             #  - Optional: Implement checkpoints. You can use the save_checkpoint
             #    method on this class to save the model to the file specified by
             #    the checkpoints argument.
-            if best_acc is None or test_result.accuracy > best_acc:
+            if best_acc is None or test.accuracy > best_acc:
                 # ====== YOUR CODE: ======
-                raise NotImplementedError()
-                # ========================
+                same = 0
+                best_acc = test.accuracy
+                if checkpoints:
+                    self.save_checkpoint(checkpoints)
+                    # ========================
             else:
                 # ====== YOUR CODE: ======
-                raise NotImplementedError()
+                same = same + 1
+                if early_stopping and same > early_stopping:
+                    break
                 # ========================
 
         return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
@@ -109,7 +119,7 @@ class Trainer(abc.ABC):
         as a relative path).
         :param checkpoint_filename: File name or relative path to save to.
         """
-        torch.save(self.model, checkpoint_filename)
+        torch.save(self.net, checkpoint_filename)
         print(f"\n*** Saved checkpoint {checkpoint_filename}")
 
     def train_epoch(self, dl_train: DataLoader, **kw) -> EpochResult:
@@ -119,7 +129,7 @@ class Trainer(abc.ABC):
         :param kw: Keyword args supported by _foreach_batch.
         :return: An EpochResult for the epoch.
         """
-        self.model.train(True)  # set train mode
+        self.net.train(True)  # set train mode
         return self._foreach_batch(dl_train, self.train_batch, **kw)
 
     def test_epoch(self, dl_test: DataLoader, **kw) -> EpochResult:
@@ -129,7 +139,7 @@ class Trainer(abc.ABC):
         :param kw: Keyword args supported by _foreach_batch.
         :return: An EpochResult for the epoch.
         """
-        self.model.train(False)  # set evaluation (test) mode
+        self.net.train(False)  # set evaluation (test) mode
         return self._foreach_batch(dl_test, self.test_batch, **kw)
 
     @abc.abstractmethod
@@ -248,7 +258,7 @@ class ClassifierTrainer(Trainer):
             X = X.to(self.device)
             y = y.to(self.device)
 
-        self.model: Classifier
+        self.net: Classifier
         batch_loss: float
         num_correct: int
 
@@ -258,14 +268,14 @@ class ClassifierTrainer(Trainer):
         #  - Update parameters
         #  - Classify and calculate number of correct predictions
         # ====== YOUR CODE: ======
-        scores = self.model(X)
+        scores = self.net(X)
         loss = self.loss_fn(scores, y)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
 
-        y_pred = self.model.classify_scores(scores)
+        y_pred = self.net.classify_scores(scores)
         num_correct = (y == y_pred).sum().item()
         batch_loss = loss.item()
         # ========================
@@ -278,7 +288,7 @@ class ClassifierTrainer(Trainer):
             X = X.to(self.device)
             y = y.to(self.device)
 
-        self.model: Classifier
+        self.net: Classifier
         batch_loss: float
         num_correct: int
 
@@ -287,8 +297,8 @@ class ClassifierTrainer(Trainer):
             #  - Forward pass
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
-            scores = self.model(X)
-            y_pred = self.model.classify_scores(scores)
+            scores = self.net(X)
+            y_pred = self.net.classify_scores(scores)
             num_correct = (y == y_pred).sum().item()
             batch_loss = self.loss_fn(scores, y).item()
             # ========================
@@ -299,7 +309,9 @@ class ClassifierTrainer(Trainer):
 class LayerTrainer(Trainer):
     def __init__(self, model, loss_fn, optimizer):
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.net = model
+        self.fn_los = loss_fn
+        self.optim = optimizer
         # ========================
 
     def train_batch(self, batch) -> BatchResult:
@@ -312,7 +324,15 @@ class LayerTrainer(Trainer):
         #  - Calculate number of correct predictions (make sure it's an int,
         #    not a tensor) as num_correct.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        self.optim.zero_grad()
+        flattend = X.flatten().reshape(X.shape[0], -1)
+        res = self.net.forward(flattend)
+        loss = self.fn_los(res, y)
+        correct_predictions = torch.eq(y, torch.argmax(res, dim=1))
+        num_correct = correct_predictions.sum().item()
+        self.net.backward(self.fn_los.backward())
+        self.optim.step()
+
         # ========================
 
         return BatchResult(loss, num_correct)
@@ -322,7 +342,11 @@ class LayerTrainer(Trainer):
 
         # TODO: Evaluate the Layer model on one batch of data.
         # ====== YOUR CODE: ======
-        raise NotImplementedError()
+        flattend = X.flatten().reshape(X.shape[0], -1)
+        out = self.net.forward(flattend)
+        loss = self.fn_los(out, y)
+        correct_predictions = torch.eq(y, torch.argmax(out, dim=1))
+        num_correct = correct_predictions.sum().item()
         # ========================
 
         return BatchResult(loss, num_correct)
