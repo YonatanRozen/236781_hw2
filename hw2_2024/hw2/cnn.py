@@ -105,9 +105,9 @@ class CNN(nn.Module):
                 convs.append(act_layer)
 
             if self.pooling_type == 'max':
-                pool = nn.MaxPool2d(kernel_size=self.pooling_params['kernel_size'])
+                pool = nn.MaxPool2d(**self.pooling_params)
             else:
-                pool = nn.AvgPool2d(kernel_size=self.pooling_params['kernel_size'])
+                pool = nn.AvgPool2d(**self.pooling_params)
             convs.append(pool)
 
             layers += convs
@@ -389,9 +389,9 @@ class ResNet(CNN):
                                           activation_params=self.activation_params))
 
             if self.pooling_type == 'max':
-                layers.append(nn.MaxPool2d(self.pooling_params['kernel_size']))
+                layers.append(nn.MaxPool2d(**self.pooling_params))
             else:
-                layers.append(nn.AvgPool2d(self.pooling_params['kernel_size']))
+                layers.append(nn.AvgPool2d(**self.pooling_params))
 
             in_channels = self.channels[(i+1) * P - 1]
 

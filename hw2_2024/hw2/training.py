@@ -66,7 +66,7 @@ class Trainer(abc.ABC):
         """
 
         actual_num_epochs = 0
-        same = 0
+        epochs_without_improvement = 0
 
         train_loss, train_acc, test_loss, test_acc = [], [], [], []
         best_acc = None
@@ -83,12 +83,15 @@ class Trainer(abc.ABC):
             #  - Use the train/test_epoch methods.
             #  - Save losses and accuracies in the lists above.
             # ====== YOUR CODE: ======
-            test = self.test_epoch(dl_test, **kw)
-            train = self.train_epoch(dl_train, **kw)
-            test_loss += [torch.mean(torch.FloatTensor(test.losses)).item()]
-            train_loss += [torch.mean(torch.FloatTensor(train.losses)).item()]
-            test_acc += [test.accuracy]
-            train_acc += [train.accuracy]
+
+            train_result = self.train_epoch(dl_train, **kw)
+            train_loss.append(torch.tensor(train_result.losses).mean().item())
+            train_acc.append(train_result.accuracy)
+
+            test_result = self.test_epoch(dl_test, **kw)
+            test_loss.append(torch.tensor(test_result.losses).mean().item())
+            test_acc.append(test_result.accuracy)
+
             # ========================
 
             # TODO:
@@ -97,18 +100,21 @@ class Trainer(abc.ABC):
             #  - Optional: Implement checkpoints. You can use the save_checkpoint
             #    method on this class to save the model to the file specified by
             #    the checkpoints argument.
-            if best_acc is None or test.accuracy > best_acc:
+
+            actual_num_epochs += 1
+
+            if best_acc is None or test_result.accuracy > best_acc:
                 # ====== YOUR CODE: ======
-                same = 0
-                best_acc = test.accuracy
+                epochs_without_improvement = 0
+                best_acc = test_result.accuracy
                 if checkpoints:
                     self.save_checkpoint(checkpoints)
                     # ========================
             else:
                 # ====== YOUR CODE: ======
-                same = same + 1
-                if early_stopping and same > early_stopping:
-                    break
+                epochs_without_improvement += 1
+                if early_stopping and epochs_without_improvement > early_stopping:
+                    return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
                 # ========================
 
         return FitResult(actual_num_epochs, train_loss, train_acc, test_loss, test_acc)
@@ -275,7 +281,7 @@ class ClassifierTrainer(Trainer):
         loss.backward()
         self.optimizer.step()
 
-        y_pred = self.net.classify_scores(scores)
+        y_pred = torch.argmax(scores, dim=1)
         num_correct = (y == y_pred).sum().item()
         batch_loss = loss.item()
         # ========================
@@ -298,7 +304,7 @@ class ClassifierTrainer(Trainer):
             #  - Calculate number of correct predictions
             # ====== YOUR CODE: ======
             scores = self.net(X)
-            y_pred = self.net.classify_scores(scores)
+            y_pred = torch.argmax(scores, dim=1)
             num_correct = (y == y_pred).sum().item()
             batch_loss = self.loss_fn(scores, y).item()
             # ========================

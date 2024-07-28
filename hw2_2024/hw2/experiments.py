@@ -26,12 +26,12 @@ MODEL_TYPES = {
 
 
 def mlp_experiment(
-    depth: int,
-    width: int,
-    dl_train: DataLoader,
-    dl_valid: DataLoader,
-    dl_test: DataLoader,
-    n_epochs: int,
+        depth: int,
+        width: int,
+        dl_train: DataLoader,
+        dl_valid: DataLoader,
+        dl_test: DataLoader,
+        n_epochs: int,
 ):
     # TODO:
     #  - Create a BinaryClassifier model.
@@ -51,27 +51,37 @@ def mlp_experiment(
 
 
 def cnn_experiment(
-    run_name,
-    out_dir="./results",
-    seed=None,
-    device=None,
-    # Training params
-    bs_train=128,
-    bs_test=None,
-    batches=100,
-    epochs=100,
-    early_stopping=3,
-    checkpoints=None,
-    lr=1e-3,
-    reg=1e-3,
-    # Model params
-    filters_per_layer=[64],
-    layers_per_block=2,
-    pool_every=2,
-    hidden_dims=[1024],
-    model_type="cnn",
-    # You can add extra configuration for your experiments here
-    **kw,
+        run_name,
+        out_dir="./results",
+        seed=None,
+        device=None,
+        # Training params
+        bs_train=128,
+        bs_test=None,
+        batches=100,
+        epochs=100,
+        early_stopping=3,
+        checkpoints=None,
+        lr=1e-3,
+        reg=1e-3,
+        # Model params
+        filters_per_layer=[64],
+        layers_per_block=2,
+        pool_every=2,
+        hidden_dims=[1024],
+        model_type="cnn",
+        # You can add extra configuration for your experiments here
+        stride=1,
+        padding=1,
+        kernel_size=3,
+        dilation=1,
+        pooling_kernel_size=2,
+        pooling_stride=2,
+        lrelu_slope=0.01,
+        dropout=0.1,
+        batchnorm=False,
+        bottleneck=False,
+        **kw,
 ):
     """
     Executes a single run of a Part3 experiment with a single configuration.
@@ -107,7 +117,46 @@ def cnn_experiment(
     #   for you automatically.
     fit_res = None
     # ====== YOUR CODE: ======
-    raise NotImplementedError()
+    print(device)
+    # Create the model
+    model = None
+    activation_params = dict()
+    if model_type == "cnn":
+        model = CNN(in_size=ds_train[0][0].shape, out_classes=10,
+                    channels=[elem for _ in range(layers_per_block) for elem in filters_per_layer],
+                    pool_every=pool_every, hidden_dims=hidden_dims,
+                    conv_params=dict(kernel_size=kernel_size, padding=padding,
+                                     stride=stride, dilation=dilation),
+                    pooling_params=dict(kernel_size=pooling_kernel_size, stride=pooling_stride),
+                    activation_params=activation_params)
+    elif model_type == "resnet":
+        model = ResNet(
+            in_size=ds_train[0][0].shape,
+            out_classes=10,
+            channels=[elem for _ in range(layers_per_block) for elem in filters_per_layer], pool_every=pool_every,
+            hidden_dims=hidden_dims,
+            conv_params=dict(kernel_size=kernel_size, padding=padding, stride=stride, dilation=dilation,
+                             dropout=dropout, bottleneck=bottleneck, batchnorm=batchnorm),
+            pooling_params=dict(kernel_size=pooling_kernel_size, stride=pooling_stride),
+            activation_params=activation_params
+        )
+    model = model.to(device)
+
+    # A loss function
+    loss_fn = torch.nn.CrossEntropyLoss()
+
+    # An optimizer
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=reg)
+
+    # For training & classifying
+    trainer = ClassifierTrainer(model, loss_fn, optimizer, device)
+    batch_size = len(ds_train) // batches
+
+    # Loaders for handling dataset
+    dl_train = torch.utils.data.DataLoader(dataset=ds_train, batch_size=batch_size, shuffle=True)
+    dl_test = torch.utils.data.DataLoader(dataset=ds_test, batch_size=batch_size, shuffle=False)
+
+    fit_res = trainer.fit(dl_train, dl_test, epochs, early_stopping=early_stopping)
     # ========================
 
     save_experiment(run_name, out_dir, cfg, fit_res)
