@@ -110,54 +110,52 @@ def part2_dropout_hp():
 
 part2_q1 = r"""
 **Your answer:**
+first lets explain about dropout:
+dropout is a regularization technique used to prevent overfitting during the training of neural networks.It works by randomly "dropping out" a fraction of the neurons in the network on each forward pass. This means that each neuron has some probability of being dropped. By randomly dropping neurons, dropout forces the network to not rely on specific neurons, thus preventing co-adaptation. This makes the network more robust and able to generalize better to unseen data.
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+1 + 2. lets first explain the graphs with dropout and without dropout. in the graph that does not use dropout we can see a very good training accuracy (more than 95% in just 30 epochs) but a consistent and relativly low test accuracy after 5 epochs. this is what we expected to see because as we explained above, when not using dropout the neural network relys more on spesific neurons and tends to overfit. this overfitting explains the low test accuracy despite high training accuracy. 
+ on the other hand, we can see that the graph with dropout = 0.4 has lower training accuracy but much better test accuracy. again, this is what we expected to see because the dropout generalzed the network such that it does not rely on spesific neurons.
+ in the last gragh with dropout = 0.8 we can see that the training accuracy is the lowest and test accuracy is similar to dropout = 0. we expected this because when so many neurons are dropd, the network loses important information and it learns less. it havily generalizes the data so the test accuracy is similar to the first graph.
+ essentially, the dropout parameter is a trade-off between fitting to specific neurons and data, and generalization and robustness of the network.
+ 
 """
 
 part2_q2 = r"""
 **Your answer:**
-
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+Yes, it is possible for the test loss to increase for a few epochs while the test accuracy also increases. the Cross-Entropy Loss measures the difference between the predicted probability distribution and the actual distribution. It takes into account the confidence of the predictions. If a model becomes more confident in its wrong predictions or less confident in its correct predictions, the loss can increase. 
+the test accuracy measures the percentage of correct predictions. It does not take into account the confidence of the predictions, only whether the top predicted class matches the actual class. 
+let us look at an examle: let there be $y'_1 = \hat{y'}_1$  and $y'_2 \ne \hat{y'}_2, y'_3 \ne \hat{y'}_3$ which are almost identical. Then, in the next epoch, $\hat{y'}_2, \hat{y'}_3$ increase by a small margin, such that $y'_2 = \hat{y'}_2, y'_3 = \hat{y'}_3$ and $y_1$ decreases by a big margin.
+after this epoch, the predicted labels have not changed except for $y'_2$ and $y'_3$ that are now equal to their true labels and one predicted lable $y'_1$ that might be not equal to its true lable. therefore the test accuracy increases.
+Despite that, the distances between the predicted and the true labels are greater than the last epoch and thus the loss also increses.
 
 """
 
 part2_q3 = r"""
 **Your answer:**
+1.Gradient Descent is an optimization algorithm. this algorithm updates the model parameters in each iteration to minimize the loss function.
+Back-Propagation is an algorithm used to compute the gradient of the loss function with respect to the model parameters in neural networks. It efficiently calculates the gradient using the chain rule.
 
+2. SGD algorithm is similar to the GD algorithm in almost every aspect. the difference between them is that in SGD, in each epoch the algorithm samples a subset of the dataset $X$, which its size is $BatchSize$, and only take that subset into consideration whlie deciding the step. In GD the algorithm takes into consideration all the samples.
+now we will compare the effects of this diffrence. in terms of speed and efficiency, GD is Slower per update because it processes the entire dataset but more stable due to averaging over all examples. SGD is Faster per update since it processes only one example at a time, but less stable due to high variance in parameter updates. 
+in terms of convergence, GD Moves steadily towards the minimum but can be slow and may get stuck in local minima. SGD has Faster convergence due to frequent updates, but can fluctuate around the minimum and requires a learning rate schedule to stabilize.
+in terms of memory usege, GD Requires the entire dataset in memory. SGD Requires only one example in memory at a time, suitable for large datasets.
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+3. a. when dealing with large datasets, in GD algorithm the gradient is calculated for the entire dataset, which can be computationally expensive and slow. In contrast, SGD updates the model parameters using only one or a few training examples at a time (mini-batches), making the update process much faster and more feasible for large-scale data.
+   b. The inherent noise in the parameter updates due to the random selection of training examples in SGD acts as a form of regularization. This can help prevent overfitting and allow the model to generalize better to unseen data. The noise can help the model escape local minima and potentially find better solutions.
+   c. The frequent updates in SGD lead to faster initial progress in training. This means that even with the same computational resources, SGD can achieve a reasonable level of model accuracy much faster than GD, which can be crucial in practical settings where quick iterations and feedback are necessary.
+   
+4. a. The proposed method would not produce a gradient strictly equivalent to that of standard GD due to the difference in scaling. In standard GD, the gradient is the average of the loss gradients across the entire dataset. In the proposed method, the gradient is the sum of the loss gradients from disjoint batches, making it potentially larger by a factor of the number of batches K. This discrepancy can lead to differences in update magnitudes and convergence behavior. Moreover, the balance of contributions from each sample in standard GD would not be maintained.
+   b. When performing the backward pass in neural network training, it requires the memory to store the intermediate activations and gradients for all parameters across all samples that were part of the forward pass. When multiple batches are processed in forward passes before a single backward pass, the memory usage can spike dramatically. This is because the intermediate activations from each batch need to be retained until the backward pass is performed. Even though each individual batch might fit into memory during its forward pass, the combined memory usage from storing intermediate states for all batches can exceed the available memory. This accumulation leads to an out-of-memory error, despite using smaller batch sizes.
 """
 
 part2_q4 = r"""
 **Your answer:**
+1.a. In forward mode AD, to compute the gradient ∇f(x0) of the function f=fn∘fn−1∘…∘f1 at some point x0, we track the function values and their derivatives during the forward pass. By storing only the current function value and its derivative at each step, we achieve O(1) memory complexity. This approach is efficient and avoids the need to store all intermediate values and their derivatives simultaneously (which causes the memory complexity to be O(n)), while maintaining the computation cost of O(n).
+  b. To compute the gradient using backward mode Automatic Differentiation (AD) with reduced memory complexity, we can employ checkpointing. This method strategically stores a subset of intermediate values (checkpoints) instead of all intermediate values during the forward pass, and recomputes the necessary values on-the-fly during the backward pass. By dividing the computational graph into segments and storing values only at the beginning of each segment, checkpointing significantly reduces memory usage. During the backward pass, starting from the last checkpoint, we recompute intermediate values within each segment as needed to propagate the gradients backward. This allows us to manage memory efficiently, reducing the memory complexity to O(k) where k is the number of checkpoints, while maintaining the overall computation cost at O(n). if we choose to use 2 checkpoints for example, the memory complexity is O(1).
+  
+2. Yes, checkpointing techniques can be generalized for arbitrary computational graphs, though with some considerations. Checkpointing works by saving and recomputing intermediate values during the backward pass, allowing for significant memory savings. To apply this effectively, the graph can be decomposed into manageable subgraphs or segments, which can be processed sequentially to handle memory efficiently. However, for graphs with parallel executions or complex dependencies, checkpointing must be adapted to manage synchronization and dependencies. While achieving O(1) memory complexity in all cases may be challenging, checkpointing still offers substantial improvements over storing all intermediate activations, making it a valuable approach for handling large and complex computational graphs.   
 
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+3. in deep architectures like VGGs and ResNets, Applying checkpointing techniques to backpropagation significantly improves memory management. By saving intermediate activations only at selected checkpoints and recomputing them as needed during the backward pass, checkpointing reduces the memory footprint compared to storing all activations. Although the memory complexity does not reach O(1) (constant space) but rather O(k), where k is the number of checkpoints, this approach still substantially alleviates the memory burden. This reduction allows for training very deep networks on hardware with limited memory, making it feasible to handle large models.
 """
 
 # ==============
@@ -389,16 +387,12 @@ bigger sizes ([64,128,256]), and L=2 achieved the best test accuracies.
 
 
 part6_q1 = r"""
-**Your answer:**
+**Your answer:** 
+1. The model's performance, as evidenced by the results, was quite poor. It frequently identified incorrect objects with high confidence. For instance, it mistakenly identified a dolphin as a person with a confidence level of 0.9, which is notably high. Accurate predictions were rare, with the model often marking non-existent items such as a surfboard and confusing different objects like dogs and cats.
 
+2. In the first picture featuring dolphins, the misclassification may be due to the dolphins' dark coloration against a bright background, which poses a challenge for accurate detection. The dolphins overlapping each other adds to the difficulty, making it harder for the model to distinguish individual animals. Additionally, the model may have a bias towards detecting people, causing it to incorrectly classify dolphin shapes as humans. In the second picture, the main problem is the significant occlusion of the animals, which complicates the model's ability to accurately identify and differentiate their bodies. This occlusion likely leads to confusion in recognizing distinct animals. Moreover, the model's inherent bias towards certain objects might also play a role, as it struggles to correctly identify animals that are less commonly seen in occluded conditions.
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+3. To conduct a PGD attack on an object detection model like YOLO, begin with an initial image 𝑥 and utilize a pretrained YOLO model. The aim is to cause YOLO to either incorrectly classify the objects in 𝑥 or completely miss them. This is achieved by maximizing the model's loss through iterative perturbations added to the image. In each iteration, calculate the gradient of the loss with respect to the image and modify the image in the direction that increases the loss. It's crucial to keep these perturbations minimal to ensure the altered image remains similar to the original. By projecting the perturbations within a certain bound, you avoid making the image significantly different from its original version. This method subtly changes the image to mislead the model while keeping the modifications undetectable to the human eye.
 """
 
 
@@ -418,26 +412,15 @@ An equation: $e^{i\pi} -1 = 0$
 
 part6_q3 = r"""
 **Your answer:**
+In the first image, a range of animals including lions, tigers, and cheetahs are visible, all facing the camera. Unfortunately, the model struggled to accurately identify these animals, categorizing them all as either cats or birds. This issue likely arises from the model's training data, which predominantly features cats, leading to a bias towards recognizing feline characteristics. Additionally, partial occlusions of the animals in the image contributed to incorrect classifications, with the model misinterpreting the occluded animals as a single large creature. The occlusion even led the model to erroneously identify a bird that isn't present in the image. Despite the presence of distinct species like lions and tigers, the model’s narrow training scope caused it to generalize all animals as cats.
 
+In the second image, two wolves are positioned very closely together, with their faces nearly touching against a white background. The model struggled to differentiate between them, mistakenly identifying them as a single large dog. This misclassification can be attributed to a few key factors. The overlap between the wolves created occlusion, leading to confusion in distinguishing the two animals. Additionally, the white background accentuated the wolves' dark fur, which may have caused the model to perceive them as a single entity. This situation underscores the need for diverse and thorough training datasets to enhance the model's capability to differentiate between objects that are closely spaced.
 
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
-
+In the third image, a street scene is captured with significant motion blur as a car passes by. The model incorrectly identified the car as a train, which can be attributed to the blur and movement obscuring key details. The lack of clear, distinct features due to the blurriness likely hindered the model's ability to accurately classify the object. This situation highlights the difficulties models encounter with low-resolution or dynamic images and emphasizes the necessity for training on a variety of visual conditions to enhance the model's robustness.
 """
 
 part6_bonus = r"""
 **Your answer:**
-
-
-Write your answer using **markdown** and $\LaTeX$:
-```python
-# A code block
-a = 2
-```
-An equation: $e^{i\pi} -1 = 0$
+To enhance the pictures, we convert them from their original color space to one more suited for processing. Next, we significantly boost the contrast to make the details more distinct and noticeble. After adjusting the contrast, we ensure that the brightness of images remains at their original level to keep their natural appearance intact. We then apply a slight blur to reduce noise and smooth out minor imperfections. Following this, we sharpen the images to enhance the edges and make the details more pronounced. Converting the images to grayscale offers a different perspective, emphasizing contrast and structure. Lastly, we resize the images for uniformity and save the new pictures. these manipulations on the pictures will help the model to classify objects better. for example we ran the code on the third picture and after that the model was able to classify it correctly.
 
 """
